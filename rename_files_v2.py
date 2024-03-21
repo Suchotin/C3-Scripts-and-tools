@@ -24,8 +24,6 @@ def find_page_breaks(sheet):
     h_positions = [pb.Location for pb in h_page_breaks]
     v_positions = [pb.Location for pb in v_page_breaks]
 
-    #print(h_positions)
-
     return h_positions, v_positions
 
 
@@ -43,14 +41,18 @@ def main():
     h_page_breaks, v_page_breaks = find_page_breaks(sheet)
 
     # Add the start and end positions to handle the first and last pages
-    #h_page_breaks = [0] + [pb.Row for pb in h_page_breaks] + [sheet.used_range.last_cell.row]
-    h_page_breaks = [0, 50]
+    if len(h_page_breaks) == 0:
+        print("Vertical Page Breaks are not defined, return to Excel!")
+    else:
+        h_page_breaks = [0] + [pb.Row for pb in h_page_breaks]
+
     v_page_breaks = [0] + [pb.Column for pb in v_page_breaks] + [sheet.used_range.last_cell.column]
 
-    print(h_page_breaks)
-    print(len(h_page_breaks))
-    print(v_page_breaks)
-    print(len(v_page_breaks))
+    print("The boundaries of the workspace are set:")
+    print(f"    HPageBreaks rows: {h_page_breaks}")
+    print(f"    HPageBreaks count: {len(h_page_breaks)}")
+    print(f"    VPageBreaks columns: {v_page_breaks}")
+    print(f"    VPageBreaks count: {len(v_page_breaks)}" + '\n')
 
     # Iterate through each page
     for i in range(len(h_page_breaks) - 1):
@@ -60,35 +62,30 @@ def main():
             start_col = v_page_breaks[j]
             end_col = v_page_breaks[j + 1]
 
-            # Get the range of the current page
-            page_range = sheet.range((start_row + 1, start_col + 1), (end_row, end_col - 1))
+            if j == 0:
+                # Get the range of the first page
+                page_range = sheet.range((start_row + 1, start_col + 1), (end_row, end_col - 1))
 
-            # Reset name for every cell
-            pdf_filename = None
+            else:
+                # Get the range of the current page
+                page_range = sheet.range((start_row + 1, start_col), (end_row, end_col - 1))
 
             # Iterate through each cell in the third column
-            if j == 0:
-                for cell in page_range.columns[2]:
-                    # Check if the cell matches the specified pattern
-                    if re.match(r'C3\.\w{2,3}\d{3,4}', str(cell.value)):
-                        # Extract the name from the cell
-                        name = str(cell.value)
-                        break
-            else:
-                for cell in page_range.columns[1]:
-                    # Check if the cell matches the specified pattern
-                    if re.match(r'C3\.\w{2,3}\d{3,4}', str(cell.value)):
-                        # Extract the name from the cell
-                        name = str(cell.value)
-                        break
+            for cell in page_range.columns[2]:
+                # Check if the cell matches the specified pattern
+                if re.match(r'C3\.\w{2,3}\d{3,4}', str(cell.value)):
+                    # Extract the name from the cell
+                    name = str(cell.value)
+                    # Define the PDF filename
+                    pdf_filename = f"DS_{name}.pdf"  # Add page number to avoid overwriting
+                    # Define the full path to save the PDF
+                    pdf_path = os.path.join(excel_dir, pdf_filename)
+                    # Print the page to PDF
+                    page_range.api.ExportAsFixedFormat(0, pdf_path)
+                    print(f"Page printed: {pdf_filename}")
+                    break
 
-            # Define the PDF filename
-            pdf_filename = f"DS_{name}.pdf"  # Add page number to avoid overwriting
-            # Define the full path to save the PDF
-            pdf_path = os.path.join(excel_dir, pdf_filename)
-            # Print the page to PDF
-            page_range.api.ExportAsFixedFormat(0, pdf_path)
-            print(f"Page printed: {pdf_filename}")
+        print('\n' + "Printing is over!")
 
 
 if __name__ == "__main__":
